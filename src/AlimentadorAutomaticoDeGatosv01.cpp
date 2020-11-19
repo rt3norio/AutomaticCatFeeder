@@ -16,7 +16,7 @@ String ssid = "alface";                                          // REPLACE mySS
 String pass = "q1w2e3r4t5";                                      // REPLACE myPassword YOUR WIFI PASSWORD, IF ANY
 String token = "1489186927:AAF7Ddk7ACbsUIGpbNQQBS_p47Dfas58HDg"; // REPLACE myToken WITH YOUR TELEGRAM BOT TOKEN
 long long groupId = -1001471540689;                              //Group Id do grupo a enviar mensagem
-bool manualFeed = true;                                          // variavel que armazena se está na hora de alimentar ou não
+bool manualFeed = false;                                         // variavel que armazena se está na hora de alimentar ou não
 const unsigned long feedingInterval = 10800000UL;                //3h in milliseconds
 const unsigned long testFeedingInterval = 30000UL;               //5s in milliseconds
 unsigned long lastFeedingTime = 0;
@@ -184,7 +184,7 @@ void feedCats()
 
   //10g for feeding. 2 feedings for 2 cats.
   motorFeedingRoutine();
-  motorFeedingRoutine();
+  // motorFeedingRoutine(); //for now just one
 
   digitalWrite(LED_BUILTIN, OFF);
 
@@ -212,6 +212,7 @@ bool isTimeToFeed()
   if (manualFeed)
   {
     manualFeed = false;
+    sendTelegramMessage("Manual Time to feed");
     return true;
   }
 
@@ -221,7 +222,9 @@ bool isTimeToFeed()
     if (now.unixtime() - unixLastFeedingTime >= unixFeedingInterval)
     {
       digitalWrite(LED_BUILTIN, ON);
-      return true;
+      sendTelegramMessage("RTC Time to feed");
+      // return true;
+      return false;
     }
   }
 
@@ -231,7 +234,9 @@ bool isTimeToFeed()
     if (now - lastFeedingTime >= testFeedingInterval)
     {
       digitalWrite(LED_BUILTIN, ON);
-      return true;
+      sendTelegramMessage("millis Time to feed");
+      // return true;
+      return false;
     }
   }
 
