@@ -1,0 +1,104 @@
+/*
+ Name:        chatGroupEchoBot.ino
+ Created:     14/06/2020
+ Author:      Stefano Ledda <shurillu@tiscalinet.it>
+ Description: an example that check for incoming messages
+              1) send a message to the sender some "message related" infos
+              2) if the message came from a group chat, reply the group chat  
+                 with the same message (like the echoBot example)
+*/
+#include "CTBot.h"
+#include "Utilities.h" // for int64ToAscii() helper function
+
+String ssid  = "alface"    ; // REPLACE mySSID WITH YOUR WIFI SSID
+String pass  = "q1w2e3r4t5"; // REPLACE myPassword YOUR WIFI PASSWORD, IF ANY
+String token = "1489186927:AAF7Ddk7ACbsUIGpbNQQBS_p47Dfas58HDg"   ; // REPLACE myToken WITH YOUR TELEGRAM BOT TOKEN
+long long groupId = -1001471540689; //Group Id do grupo a enviar mensagem
+bool manualFeed = true; // variavel que armazena se está na hora de alimentar ou não
+const unsigned long feedingInterval = 10800000; //3h in milliseconds
+const unsigned long testFeedingInterval = 5000; //5s in milliseconds
+unsigned long lastFeedingTime = 0;
+
+
+CTBot myBot;
+
+void setup() {
+  // initialize the Serial
+  Serial.begin(115200);
+  Serial.println("Starting TelegramBot...");
+
+  // connect the ESP8266 to the desired access point
+  myBot.wifiConnect(ssid, pass);
+
+  // set the telegram bot token
+  myBot.setTelegramToken(token);
+  
+  // check if all things are ok
+  if (myBot.testConnection())
+    Serial.println("\ntestConnection OK");
+  else
+    Serial.println("\ntestConnection NOK");
+
+  //interrupt para o botão
+  attachInterrupt(digitalPinToInterrupt(13),buttonPressed1,RISING);
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN,1);
+}
+
+ICACHE_RAM_ATTR void buttonPressed1()          
+{                   
+   digitalWrite(LED_BUILTIN,0);
+   manualFeed = true; 
+}
+
+void loop() {
+  // a variable to store telegram message data
+  TBMessage msg;
+  
+  // check if there is a new incoming message
+  if (myBot.getNewMessage(msg)) {
+    dealWithMessage(msg);
+  }
+  if (isTimeToFeed()){
+    feedCats();
+  }
+  
+  // if is not time to do nothing, wait some time...
+  delay(2000);
+}
+
+void dealWithMessage(TBMessage msg){
+  Serial.println(msg.text);
+  // check if the message is a text message
+  if (msg.messageType == CTBotMessageText) {
+    if (msg.text == "alimentar"){
+      feedCats();
+    }
+  }
+}
+
+void feedCats(){
+  Serial.println("feeding Cats");
+  sendTelegramMessage("Gatos sendo alimentados nesse momento");
+  digitalWrite(LED_BUILTIN,1);
+  lastFeedingTime = millis();
+  
+}
+void sendTelegramMessage(String text){
+  myBot.sendMessage(groupId, text);
+}
+
+
+bool isTimeToFeed(){
+  if (manualFeed){
+    manualFeed = false;
+    return true;
+  }
+  
+  unsigned long now = millis();
+  if (now - lastFeedingTime >= feedingInterval){
+    return true;
+  }
+  
+  return false;
+}
