@@ -12,6 +12,9 @@
 #include "Utilities.h" // for int64ToAscii() helper function
 #include "RTClib.h"
 
+#define FEED_CALLBACK "alimentar" // callback data sent when "Alimentar" button is pressed
+
+CTBotInlineKeyboard myKbd;                                       // custom inline keyboard object helper
 String ssid = "alface";                                          // REPLACE mySSID WITH YOUR WIFI SSID
 String pass = "q1w2e3r4t5";                                      // REPLACE myPassword YOUR WIFI PASSWORD, IF ANY
 String token = "1489186927:AAF7Ddk7ACbsUIGpbNQQBS_p47Dfas58HDg"; // REPLACE myToken WITH YOUR TELEGRAM BOT TOKEN
@@ -66,7 +69,10 @@ void setup()
   if (myBot.testConnection())
     Serial.println("\ntestConnection OK");
   else
+  {
     Serial.println("\ntestConnection NOK");
+    abort();
+  }
 
   if (rtc.begin())
   {
@@ -88,6 +94,16 @@ void setup()
   digitalWrite(LED_BUILTIN, OFF);
 
   rtc.start();
+
+  // inline keyboard customization
+  // add a query button to the first row of the inline keyboard
+  myKbd.addButton("ALIMENTAR", FEED_CALLBACK, CTBotKeyboardButtonQuery);
+  // add another query button to the first row of the inline keyboard
+  // myKbd.addButton("LIGHT OFF", LIGHT_OFF_CALLBACK, CTBotKeyboardButtonQuery);
+  // add a new empty button row
+  myKbd.addRow();
+  // add a URL button to the second row of the inline keyboard
+  myKbd.addButton("see docs", "https://github.com/shurillu/CTBot", CTBotKeyboardButtonURL);
 }
 
 void runCW()
@@ -116,7 +132,7 @@ void stopMotor()
 ICACHE_RAM_ATTR void buttonPressed1()
 {
   digitalWrite(LED_BUILTIN, ON);
-  manualFeed = true;
+  // manualFeed = true;
 }
 
 void loop()
@@ -147,9 +163,21 @@ void dealWithMessage(TBMessage msg)
     if (msg.text == "alimentar")
     {
       feedCats();
+      return;
+    }
+    // the user write anything else --> show The Keyboard
+    myBot.sendMessage(msg.sender.id, "Inline Keyboard", myKbd);
+  }
+  if (msg.messageType == CTBotMessageQuery)
+  {
+    if (msg.callbackQueryData.equals(FEED_CALLBACK))
+    {
+      feedCats();
+      myBot.endQuery(msg.callbackQueryID, "Gatos papando!", true);
     }
   }
 }
+
 void motorFeedingRoutine()
 {
   //pull open for 1.5s
@@ -218,25 +246,25 @@ bool isTimeToFeed()
 
   if (rtcOnline)
   {
+    return false;
     DateTime now = rtc.now();
     if (now.unixtime() - unixLastFeedingTime >= unixFeedingInterval)
     {
       digitalWrite(LED_BUILTIN, ON);
-      sendTelegramMessage("RTC Time to feed");
-      // return true;
-      return false;
+      sendTelegramMessage("RTC Time to feed but it is disabled");
+      return true;
     }
   }
 
   if (!rtcOnline)
   {
+    return false;
     unsigned long now = millis();
-    if (now - lastFeedingTime >= testFeedingInterval)
+    if (now - lastFeedingTime >= feedingInterval)
     {
       digitalWrite(LED_BUILTIN, ON);
-      sendTelegramMessage("millis Time to feed");
-      // return true;
-      return false;
+      sendTelegramMessage("millis Time to feed but it is disabled");
+      return true;
     }
   }
 
